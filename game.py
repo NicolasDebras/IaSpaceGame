@@ -2,24 +2,13 @@ import arcade
 from random import *
 import matplotlib.pyplot as plt
 import pickle
+import math
 from os.path import exists
 
 # RADAR ?
 # Direction de la sortie : 0...7
 # Murs en connexitÃ© 4 (H, B, G, D) : Rien, mur ou goal
 
-MAZE = """
-#.########
-#   #    #
-#    ### #
-####     #
-#    # ###
-#  ### # #
-#    #   #
-#      # #
-#      # #
-########*#
-"""
 
 REWARD_WALL = -128
 REWARD_DEFAULT = -1
@@ -30,7 +19,8 @@ MAP_GOAL = '*'
 MAP_WALL = '#'
 
 ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT = 'U', 'D', 'L', 'R'
-ACTIONS = [ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT]
+ACTION_SHOOT = 'S'
+ACTIONS = [ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_SHOOT]
 
 MOVES = {ACTION_UP: (-1, 0),
          ACTION_DOWN: (1, 0),
@@ -48,22 +38,28 @@ def sign(x):
 
 
 class Environment:
-    def __init__(self, str_map):
+    def __init__(self):
         row, col = 0, 0
         self.map = {}
-        for line in str_map.strip().split('\n'):
-            for char in line:
-                self.map[row, col] = char
-                if char == MAP_START:
-                    self.start = (row, col)
-                elif char == MAP_GOAL:
-                    self.goal = (row, col)
-                col += 1
-            col = 0
-            row += 1
+        self.goal = []
+        self.angle = 180.0
 
-        self.height = row
-        self.width = len(line)
+        for col in range(0, 28):
+            for row in range(0, 15):
+                chance = random()
+                if chance < 0.05 and col != 0 and row != 0:
+                    self.map[row, col] = MAP_GOAL
+                    self.goal.append((row, col))
+                else:
+                    self.map[row, col] = " "
+                ##if char == MAP_START:
+                ##    
+                ##elif char == MAP_GOAL:
+                ##   
+
+        self.start = (0, 0)
+        self.height = 15
+        self.width = 28
 
     def get_radar(self, state):
         row, col = state[0], state[1]
@@ -84,7 +80,22 @@ class Environment:
         return radar + radar_goal
 
     def do(self, state, action):
-        move = MOVES[action]
+        if (action == 'S'):
+            print("tir")
+            move = state
+        elif action == ACTION_UP or action == ACTION_DOWN:
+            if self.angle == 90:
+                action = ACTION_RIGHT
+            if self.angle == 270:
+                action = ACTION_LEFT
+
+            move = MOVES[action]
+        else:
+            if action == ACTION_RIGHT and self.angle < 360:
+                self.angle = self.angle + 90
+            if action == ACTION_LEFT and self.angle > 0:
+                self.angle = self.angle - 90
+            move = state
         new_state = (state[0] + move[0], state[1] + move[1])
 
         if self.is_allowed(new_state):
@@ -105,6 +116,12 @@ class Environment:
 
 def arg_max(table):
     return max(table, key=table.get)
+
+## Tourne un sprit
+class TurningSprite(arcade.Sprite):
+    def update(self):
+        super().update()
+        self.angle = math.degrees(math.atan2(self.change_y, self.change_x))
 
 
 class Agent:
@@ -147,7 +164,7 @@ class Agent:
         self.qtable[self.state][action] += delta
         self.state = new_state
 
-        if self.state == self.env.goal:
+        if self.state in self.env.goal:
             self.history.append(self.score)
             self.noise *= 1 - 1E-1
 
@@ -176,9 +193,12 @@ class MazeWindow(arcade.Window):
                (self.env.height - state[0] - 0.5) * SPRITE_SIZE
 
     def setup(self):
-        self.exit = arcade.Sprite(":resources:images/tiles/signExit.png",
-                                  SPRITE_SCALE)
-        self.exit.center_x, self.exit.center_y = self.state_to_xy(self.env.goal)
+        self.goal = arcade.SpriteList()
+        for state in self.env.goal:
+            i = randint(1, 4)
+            exit = arcade.Sprite(":resources:images/space_shooter/meteorGrey_big"+str(i)+".png", SPRITE_SCALE)
+            exit.center_x, exit.center_y = self.state_to_xy(state)
+            self.goal.append(exit)
         self.walls = arcade.SpriteList()
         for state in self.env.map:
             if self.env.map[state] == MAP_WALL:
@@ -186,21 +206,26 @@ class MazeWindow(arcade.Window):
                 sprite.center_x, sprite.center_y = self.state_to_xy(state)
                 self.walls.append(sprite)
 
-        self.player = arcade.Sprite(":resources:images/enemies/bee.png", SPRITE_SCALE)
+        self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_green.png", SPRITE_SCALE)
         self.update_player()
 
     def on_draw(self):
         arcade.start_render()
-        self.exit.draw()
+        self.goal.draw()
         self.walls.draw()
         self.player.draw()
+        self.player.angle = self.env.angle
         arcade.draw_text(f'{self.agent.iteration} Score: {self.agent.score} Noise: {self.agent.noise}',
                          10, 10, arcade.color.RED, 24, bold=True)
 
     def on_update(self, delta_time):
-        if self.agent.state != self.env.goal:
+        if self.agent.state not in self.env.goal:
             action, reward = self.agent.do()
+            print(action)
             self.update_player()
+
+    def shoot(self):
+        bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.R:
@@ -212,10 +237,11 @@ class MazeWindow(arcade.Window):
 
     def update_player(self):
         self.player.center_x, self.player.center_y = self.state_to_xy(self.agent.state)
+        self.player.angle = self.env.angle
 
 
 if __name__ == '__main__':
-    env = Environment(MAZE)
+    env = Environment()
     #print(env.start, env.goal)
     #print(len(env.map))
     #print(f'Shape = {env.width} x {env.height}')
