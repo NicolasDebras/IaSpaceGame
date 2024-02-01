@@ -12,6 +12,7 @@ from os.path import exists
 
 REWARD_WALL = -128
 REWARD_DEFAULT = -1
+REWARD_BAD_SHOOT = -0.8
 REWARD_GOAL = 64
 
 MAP_START = '.'
@@ -43,7 +44,7 @@ class Environment:
         self.map = {}
         self.goal = []
         self.angle = 180.0
-
+        self.map[0, 0] = " "
         for col in range(0, 28):
             for row in range(0, 15):
                 chance = random()
@@ -80,15 +81,16 @@ class Environment:
         return radar + radar_goal
 
     def do(self, state, action):
+        shoot = False
         if (action == 'S'):
-            print("tir")
+            print("shoot")
+            shoot = True
             move = state
         elif action == ACTION_UP or action == ACTION_DOWN:
             if self.angle == 90:
                 action = ACTION_RIGHT
             if self.angle == 270:
                 action = ACTION_LEFT
-
             move = MOVES[action]
         else:
             if action == ACTION_RIGHT and self.angle < 360:
@@ -98,16 +100,60 @@ class Environment:
             move = state
         new_state = (state[0] + move[0], state[1] + move[1])
 
-        if self.is_allowed(new_state):
-            reward = REWARD_WALL
-        else:
-            state = new_state
-            if new_state == self.goal:
+        if shoot == True:
+            print(move)       
+            if self.is_destroyed(move):
                 reward = REWARD_GOAL
-            else:
+            else :
                 reward = REWARD_DEFAULT
+        else :
+            if self.is_allowed(new_state):
+                reward = REWARD_WALL
+            else:
+                state = new_state
+                if new_state == self.goal:
+                    reward = REWARD_GOAL
+                else:
+                    reward = REWARD_DEFAULT
 
         return state, reward
+
+    def is_destroyed(self, move):
+        print('passage dans la fonction, angle de : ' + str(self.angle))
+        if (self.angle%360 == 90):
+            i = move[0]
+            while i > 0:
+                if self.map[i, move[1]] == MAP_GOAL:
+                    self.map[i, move[1]] = " "
+                    print("GG")
+                    return True
+                i = i - 1
+        if (self.angle%360 == 270):
+            i = move[0]
+            while i < 15:
+                if self.map[i, move[1]] == MAP_GOAL:
+                    self.map[i, move[1]] = " "
+                    print("GG")
+                    return True
+                i = i + 1
+        if (self.angle%360 == 0 ):
+            i = move[1]
+            while i > 0:
+                if self.map[move[0], i] == MAP_GOAL:
+                    self.map[move[0], i] = " "
+                    print("GG")
+                    return True
+                i = i - 1
+        if (self.angle%360 == 180):
+            i = move[0]
+            while i < 28:
+                if self.map[move[0], i] == MAP_GOAL:
+                    self.map[move[0], i] = " "
+                    print("GG")
+                    return True
+                i = i + 1
+        
+        return False
 
     def is_allowed(self, state):
         return state not in self.map \
@@ -194,38 +240,58 @@ class MazeWindow(arcade.Window):
 
     def setup(self):
         self.goal = arcade.SpriteList()
+        self.bullet_list = arcade.SpriteList()
         for state in self.env.goal:
             i = randint(1, 4)
             exit = arcade.Sprite(":resources:images/space_shooter/meteorGrey_big"+str(i)+".png", SPRITE_SCALE)
             exit.center_x, exit.center_y = self.state_to_xy(state)
             self.goal.append(exit)
-        self.walls = arcade.SpriteList()
-        for state in self.env.map:
-            if self.env.map[state] == MAP_WALL:
-                sprite = arcade.Sprite(":resources:images/tiles/cactus.png", SPRITE_SCALE)
-                sprite.center_x, sprite.center_y = self.state_to_xy(state)
-                self.walls.append(sprite)
 
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_green.png", SPRITE_SCALE)
         self.update_player()
 
+
     def on_draw(self):
         arcade.start_render()
         self.goal.draw()
-        self.walls.draw()
         self.player.draw()
+        self.bullet_list.draw()
         self.player.angle = self.env.angle
         arcade.draw_text(f'{self.agent.iteration} Score: {self.agent.score} Noise: {self.agent.noise}',
                          10, 10, arcade.color.RED, 24, bold=True)
 
     def on_update(self, delta_time):
-        if self.agent.state not in self.env.goal:
+        nombre = sum(1 for cle, valeur in self.env.map.items() if valeur == "*")
+        print(nombre)
+        if nombre != 0:
             action, reward = self.agent.do()
-            print(action)
-            self.update_player()
+            if action != "S":
+                self.update_player()
+            else:
+                self.shoot()
+            self.bullet_list.update()
+
+            for bullet in self.bullet_list:
+                asteroids = arcade.check_for_collision_with_list(bullet, self.goal)
+                for asteroid in asteroids:
+                    asteroid.remove_from_sprite_lists()
+                    bullet.remove_from_sprite_lists()
+
+    
 
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
+        bullet_sprite.center_x, bullet_sprite.center_y = self.state_to_xy(self.agent.state)
+        bullet_sprite.angle = self.env.angle
+
+        bullet_speed = 13
+        bullet_sprite.change_y = \
+                math.cos(math.radians(self.env.angle)) * bullet_speed
+        bullet_sprite.change_x = \
+                -math.sin(math.radians(self.env.angle)) \
+                * bullet_speed
+        bullet_sprite.update()
+        self.bullet_list.append(bullet_sprite)
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.R:
