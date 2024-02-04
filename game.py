@@ -261,9 +261,7 @@ class MazeWindow(arcade.Window):
                          10, 10, arcade.color.RED, 24, bold=True)
 
     def on_update(self, delta_time):
-        nombre = sum(1 for cle, valeur in self.env.map.items() if valeur == "*")
-        print(nombre)
-        if nombre != 0:
+        if self.count_asteroids() != 0:
             action, reward = self.agent.do()
             if action != "S":
                 self.update_player()
@@ -277,7 +275,8 @@ class MazeWindow(arcade.Window):
                     asteroid.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
 
-    
+    def count_asteroids(self): 
+        return sum(1 for cle, valeur in self.env.map.items() if valeur == "*")
 
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
