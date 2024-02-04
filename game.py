@@ -80,6 +80,9 @@ class Environment:
 
         return radar + radar_goal
 
+    def count_asteroids(self): 
+        return sum(1 for cle, valeur in self.map.items() if valeur == "*")
+
     def do(self, state, action):
         shoot = False
         if (action == 'S'):
@@ -118,6 +121,7 @@ class Environment:
 
         return state, reward
 
+    # a revoir 
     def is_destroyed(self, move):
         print('passage dans la fonction, angle de : ' + str(self.angle))
         if (self.angle%360 == 90):
@@ -210,7 +214,7 @@ class Agent:
         self.qtable[self.state][action] += delta
         self.state = new_state
 
-        if self.state in self.env.goal:
+        if self.env.count_asteroids() == 0:
             self.history.append(self.score)
             self.noise *= 1 - 1E-1
 
@@ -261,7 +265,7 @@ class MazeWindow(arcade.Window):
                          10, 10, arcade.color.RED, 24, bold=True)
 
     def on_update(self, delta_time):
-        if self.count_asteroids() != 0:
+        if self.env.count_asteroids() != 0:
             action, reward = self.agent.do()
             if action != "S":
                 self.update_player()
@@ -275,8 +279,7 @@ class MazeWindow(arcade.Window):
                     asteroid.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
 
-    def count_asteroids(self): 
-        return sum(1 for cle, valeur in self.env.map.items() if valeur == "*")
+    
 
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
