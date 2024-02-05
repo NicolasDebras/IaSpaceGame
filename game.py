@@ -72,18 +72,32 @@ class Environment:
                 radar.append(self.map[n])
             else:
                 radar.append(MAP_WALL)
-        delta_row = sign(self.goal[0] - row) + 1
-        delta_col = sign(self.goal[1] - col) + 1
+        next_target = self.find_closet_tuple(state)
         radar_goal = [0] * 9
-
-        position = delta_row * 3 + delta_col
-        radar_goal[position] = 1
+        if (next_target != None):
+            delta_row = sign(next_target[0] - row) + 1
+            delta_col = sign(next_target[1] - col) + 1
+            position = delta_row * 3 + delta_col
+            radar_goal[position] = 1
         
         return tuple(radar + radar_goal)
 
     def count_asteroids(self): 
         return sum(1 for cle, valeur in self.map.items() if valeur == "*")
+    
+    def find_closet_tuple(self, pos):
+        closest = None
+        min_distance = float('inf')
 
+        for point in self.goal:
+            distance = math.sqrt((point[0] - pos[0])**2 + (point[1] -  pos[1])**2)
+            if distance < min_distance:
+                min_distance = distance
+                closest = point
+
+        return closest
+
+    #a changer 
     def do(self, state, action):
         shoot = False
         if (action == 'S'):
@@ -97,9 +111,9 @@ class Environment:
                 action = ACTION_LEFT
             move = MOVES[action]
         else:
-            if action == ACTION_RIGHT and self.angle < 360:
+            if action == ACTION_RIGHT:
                 self.angle = self.angle + 90
-            if action == ACTION_LEFT and self.angle > 0:
+            if action == ACTION_LEFT:
                 self.angle = self.angle - 90
             move = state
         new_state = (state[0] + move[0], state[1] + move[1])
@@ -115,12 +129,12 @@ class Environment:
                 reward = REWARD_WALL
             else:
                 state = new_state
-                if new_state == self.goal:
-                    reward = REWARD_GOAL
-                else:
-                    reward = REWARD_DEFAULT
+                #if new_state == self.goal:
+                #    reward = REWARD_GOAL
+                #else:
+                reward = REWARD_DEFAULT
 
-        return state, reward
+        return self.get_radar(state), state, reward
 
     # a revoir 
     def is_destroyed(self, move):
@@ -130,7 +144,8 @@ class Environment:
             while i > 0:
                 if self.map[i, move[1]] == MAP_GOAL:
                     self.map[i, move[1]] = " "
-                    print("GG")
+                    self.goal.remove((i, move[1]))
+                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
                     return True
                 i = i - 1
         if (self.angle%360 == 270):
@@ -138,7 +153,8 @@ class Environment:
             while i < 15:
                 if self.map[i, move[1]] == MAP_GOAL:
                     self.map[i, move[1]] = " "
-                    print("GG")
+                    self.goal.remove((i, move[1]))
+                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
                     return True
                 i = i + 1
         if (self.angle%360 == 0 ):
@@ -146,7 +162,8 @@ class Environment:
             while i > 0:
                 if self.map[move[0], i] == MAP_GOAL:
                     self.map[move[0], i] = " "
-                    print("GG")
+                    self.goal.remove((move[0], i))
+                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
                     return True
                 i = i - 1
         if (self.angle%360 == 180):
@@ -154,7 +171,8 @@ class Environment:
             while i < 28:
                 if self.map[move[0], i] == MAP_GOAL:
                     self.map[move[0], i] = " "
-                    print("GG")
+                    self.goal.remove((move[0], i))
+                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
                     return True
                 i = i + 1
         
@@ -176,25 +194,23 @@ class TurningSprite(arcade.Sprite):
 
 
 class Agent:
-    def __init__(self, env, learning_rate=1, discount_factor=0.9):
+    def __init__(self, env, learning_rate = 1, discount_factor = 0.9):
         self.env = env
         self.reset()
         self.qtable = {}
-        for state in env.map:
-            self.qtable[state] = {}
-            for action in ACTIONS:
-                self.qtable[state][action] = 0.0
-
+        self.add_state(self.state)
+                
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.history = []
         self.noise = 0
 
     def reset(self):
-        self.state = env.start
+        self.position = env.start
         self.env.init_map()
         self.score = 0
         self.iteration = 0
+        self.state = self.env.get_radar(self.position)
 
     def best_action(self):
         if random() < self.noise:
@@ -204,23 +220,31 @@ class Agent:
 
     def do(self):
         action = self.best_action()
-        new_state, reward = self.env.do(self.state, action)
+        new_state, position, reward = self.env.do(self.position, action)
+        #new_state, reward = self.env.do(self.state, action)
         self.score += reward
         self.iteration += 1
+        self.position = position
 
-        # Q-learning
-        self.qtable[self.state][action] += reward
+        #Q-learning
+        self.add_state(new_state)        
         maxQ = max(self.qtable[new_state].values())
         delta = self.learning_rate * (reward + self.discount_factor * maxQ \
-                                      - self.qtable[self.state][action])
+                              - self.qtable[self.state][action])
         self.qtable[self.state][action] += delta
         self.state = new_state
 
-        if self.env.count_asteroids() == 0:
+        if self.env.count_asteroids() == 0 :
             self.history.append(self.score)
             self.noise *= 1 - 1E-1
-
+        
         return action, reward
+    
+    def add_state(self, state):
+        if state not in self.qtable:
+            self.qtable[state] = {}
+            for action in ACTIONS:
+                self.qtable[state][action] = 0.0
 
     def load(self, filename):
         if exists(filename):
@@ -284,7 +308,7 @@ class MazeWindow(arcade.Window):
 
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
-        bullet_sprite.center_x, bullet_sprite.center_y = self.state_to_xy(self.agent.state)
+        bullet_sprite.center_x, bullet_sprite.center_y = self.state_to_xy(self.agent.position)
         bullet_sprite.angle = self.env.angle
 
         bullet_speed = 13
@@ -309,7 +333,7 @@ class MazeWindow(arcade.Window):
         self.update_player()
 
     def update_player(self):
-        self.player.center_x, self.player.center_y = self.state_to_xy(self.agent.state)
+        self.player.center_x, self.player.center_y = self.state_to_xy(self.agent.position)
         self.player.angle = self.env.angle
 
 
