@@ -105,9 +105,9 @@ class Environment:
             shoot = True
             move = state
         elif action == ACTION_UP or action == ACTION_DOWN:
-            if self.angle == 90:
+            if self.angle%360 == 90:
                 action = ACTION_RIGHT
-            if self.angle == 270:
+            if self.angle%360 == 270:
                 action = ACTION_LEFT
             move = MOVES[action]
         else:
@@ -136,47 +136,47 @@ class Environment:
 
         return self.get_radar(state), state, reward
 
-    # a revoir 
     def is_destroyed(self, move):
-        #print('passage dans la fonction, angle de : ' + str(self.angle))
-        if (self.angle%360 == 90):
-            i = move[0]
-            while i > 0:
-                if self.map[i, move[1]] == MAP_GOAL:
-                    self.map[i, move[1]] = " "
-                    self.goal.remove((i, move[1]))
-                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
-                    return True
-                i = i - 1
-        if (self.angle%360 == 270):
-            i = move[0]
-            while i < 15:
-                if self.map[i, move[1]] == MAP_GOAL:
-                    self.map[i, move[1]] = " "
-                    self.goal.remove((i, move[1]))
-                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
-                    return True
-                i = i + 1
-        if (self.angle%360 == 0 ):
-            i = move[1]
-            while i > 0:
-                if self.map[move[0], i] == MAP_GOAL:
-                    self.map[move[0], i] = " "
-                    self.goal.remove((move[0], i))
-                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
-                    return True
-                i = i - 1
-        if (self.angle%360 == 180):
-            i = move[0]
-            while i < 28:
-                if self.map[move[0], i] == MAP_GOAL:
-                    self.map[move[0], i] = " "
-                    self.goal.remove((move[0], i))
-                    print("Shoot, nombre restant :" + str(self.count_asteroids()))
-                    return True
-                i = i + 1
-        
-        return False
+        row, col = move
+        destroyed = False
+
+        if self.angle % 360 == 90:  # Droite
+            for i in range(col + 1, self.width):
+                if self.map[row, i] == MAP_GOAL:
+                    self.map[row, i] = " "
+                    self.goal.remove((row, i))
+                    destroyed = True
+                    break
+
+        elif self.angle % 360 == 270:  # Gauche
+            for i in range(col - 1, -1, -1):
+                if self.map[row, i] == MAP_GOAL:
+                    self.map[row, i] = " "
+                    self.goal.remove((row, i))
+                    destroyed = True
+                    break
+
+        elif self.angle % 360 == 0:  # Haut
+            for i in range(row - 1, -1, -1):
+                if self.map[i, col] == MAP_GOAL:
+                    self.map[i, col] = " "
+                    self.goal.remove((i, col))
+                    destroyed = True
+                    break
+
+        elif self.angle % 360 == 180:  # Bas
+            for i in range(row + 1, self.height):
+                if self.map[i, col] == MAP_GOAL:
+                    self.map[i, col] = " "
+                    self.goal.remove((i, col))
+                    destroyed = True
+                    break
+
+        if destroyed:
+            print("Shoot, nombre restant :" + str(self.count_asteroids()))
+
+        return destroyed
+
 
     def is_allowed(self, state):
         return state not in self.map \
