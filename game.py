@@ -39,12 +39,19 @@ def sign(x):
 
 
 class Environment:
-    def __init__(self):
-        row, col = 0, 0
+    def __init__(self):     
         self.map = {}
         self.goal = []
         self.angle = 180.0
-        self.map[0, 0] = " "
+        self.init_map()
+        self.start = (0, 0)
+        self.height = 15
+        self.width = 28
+
+    def init_map(self):
+        self.map.clear()
+        self.goal = []
+        row, col = 0, 0
         for col in range(0, 28):
             for row in range(0, 15):
                 chance = random()
@@ -53,32 +60,26 @@ class Environment:
                     self.goal.append((row, col))
                 else:
                     self.map[row, col] = " "
-                ##if char == MAP_START:
-                ##    
-                ##elif char == MAP_GOAL:
-                ##   
-
-        self.start = (0, 0)
-        self.height = 15
-        self.width = 28
+        print(self.count_asteroids())
 
     def get_radar(self, state):
         row, col = state[0], state[1]
-        neighbors = [(row - 1, col), (row, col - 1), (row + 1, col), (row, col + 1)]
+        neighbors = [(row-1, col), (row+1, col), (row, col-1), (row, col+1),
+                     (row-2, col), (row+2, col), (row, col-2), (row, col+2)]
         radar = []
         for n in neighbors:
             if n in self.map:
                 radar.append(self.map[n])
             else:
                 radar.append(MAP_WALL)
-        delta_row = sign(self.goal[0] - row[0]) + 1
-        delta_col = sign(self.goal[1] - row[1]) + 1
+        delta_row = sign(self.goal[0] - row) + 1
+        delta_col = sign(self.goal[1] - col) + 1
         radar_goal = [0] * 9
 
         position = delta_row * 3 + delta_col
         radar_goal[position] = 1
-
-        return radar + radar_goal
+        
+        return tuple(radar + radar_goal)
 
     def count_asteroids(self): 
         return sum(1 for cle, valeur in self.map.items() if valeur == "*")
@@ -86,7 +87,7 @@ class Environment:
     def do(self, state, action):
         shoot = False
         if (action == 'S'):
-            print("shoot")
+            #print("shoot")
             shoot = True
             move = state
         elif action == ACTION_UP or action == ACTION_DOWN:
@@ -104,7 +105,7 @@ class Environment:
         new_state = (state[0] + move[0], state[1] + move[1])
 
         if shoot == True:
-            print(move)       
+            #print(move)       
             if self.is_destroyed(move):
                 reward = REWARD_GOAL
             else :
@@ -123,7 +124,7 @@ class Environment:
 
     # a revoir 
     def is_destroyed(self, move):
-        print('passage dans la fonction, angle de : ' + str(self.angle))
+        #print('passage dans la fonction, angle de : ' + str(self.angle))
         if (self.angle%360 == 90):
             i = move[0]
             while i > 0:
@@ -191,6 +192,7 @@ class Agent:
 
     def reset(self):
         self.state = env.start
+        self.env.init_map()
         self.score = 0
         self.iteration = 0
 
@@ -245,15 +247,16 @@ class MazeWindow(arcade.Window):
     def setup(self):
         self.goal = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
+        self.display_meteor()
+        self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_green.png", SPRITE_SCALE)
+        self.update_player()
+
+    def display_meteor(self):
         for state in self.env.goal:
             i = randint(1, 4)
             exit = arcade.Sprite(":resources:images/space_shooter/meteorGrey_big"+str(i)+".png", SPRITE_SCALE)
             exit.center_x, exit.center_y = self.state_to_xy(state)
             self.goal.append(exit)
-
-        self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_green.png", SPRITE_SCALE)
-        self.update_player()
-
 
     def on_draw(self):
         arcade.start_render()
@@ -279,8 +282,6 @@ class MazeWindow(arcade.Window):
                     asteroid.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
 
-    
-
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
         bullet_sprite.center_x, bullet_sprite.center_y = self.state_to_xy(self.agent.state)
@@ -297,7 +298,11 @@ class MazeWindow(arcade.Window):
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.R:
+            for g in self.goal:
+                self.goal.remove(g)
             self.agent.reset()
+            self.display_meteor()
+            self.goal.draw()
         elif key == arcade.key.X:
             self.agent.noise = 1
             self.agent.reset()
