@@ -14,6 +14,7 @@ REWARD_WALL = -128
 REWARD_DEFAULT = -1
 REWARD_BAD_SHOOT = -0.8
 REWARD_GOAL = 64
+ALL_DESTROY = 128
 
 MAP_START = '.'
 MAP_GOAL = '*'
@@ -194,7 +195,7 @@ class TurningSprite(arcade.Sprite):
 
 
 class Agent:
-    def __init__(self, env, learning_rate = 1, discount_factor = 0.9):
+    def __init__(self, env, learning_rate = 0.8, discount_factor = 0.9):
         self.env = env
         self.reset()
         self.qtable = {}
@@ -305,6 +306,13 @@ class MazeWindow(arcade.Window):
                 for asteroid in asteroids:
                     asteroid.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
+        else:
+            for g in self.goal:
+                self.goal.remove(g)
+            self.agent.reset()
+            self.display_meteor()
+            self.goal.draw()
+
 
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
