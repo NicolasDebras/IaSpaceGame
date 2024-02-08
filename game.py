@@ -19,14 +19,18 @@ MAP_START = '.'
 MAP_GOAL = '*'
 MAP_WALL = '#'
 
-ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT = 'U', 'D', 'L', 'R'
+ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_UP_RIGHT, ACTION_UP_LEFT, ACTION_DOWN_RIGHT, ACTION_DOWN_LEFT = 'U', 'D', 'L', 'R', 'UR', 'UL', 'DR', 'DL'
 ACTION_SHOOT = 'S'
 ACTIONS = [ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_SHOOT]
 
 MOVES = {ACTION_UP: (-1, 0),
          ACTION_DOWN: (1, 0),
          ACTION_LEFT: (0, -1),
-         ACTION_RIGHT: (0, 1)}
+         ACTION_RIGHT: (0, 1),
+         ACTION_UP_RIGHT: (-1, 1),
+         ACTION_UP_LEFT: (-1, -1),
+         ACTION_DOWN_RIGHT: (1, 1),
+         ACTION_DOWN_LEFT: (1, -1),}
 
 SPRITE_SCALE = 0.4
 SPRITE_SIZE = int(SPRITE_SCALE * 128)
@@ -110,11 +114,22 @@ class Environment:
             if self.angle%360 == 270:
                 action = ACTION_LEFT
             move = MOVES[action]
+        elif action in [ACTION_UP_RIGHT, ACTION_UP_LEFT, ACTION_DOWN_RIGHT, ACTION_DOWN_LEFT]:
+            move = MOVES[action]
+            #ajustement de l'angle pour les déplacements diagonaux
+            if action == ACTION_UP_RIGHT:
+                self.angle = 45
+            elif action == ACTION_UP_LEFT:
+                self.angle = 315
+            elif action == ACTION_DOWN_RIGHT:
+                self.angle = 135
+            elif action == ACTION_DOWN_LEFT:
+                self.angle = 225
         else:
             if action == ACTION_RIGHT:
-                self.angle = self.angle + 90
-            if action == ACTION_LEFT:
-                self.angle = self.angle - 90
+                self.angle = (self.angle + 45) % 360
+            elif action == ACTION_LEFT:
+                self.angle = (self.angle - 45) % 360
             move = state
         new_state = (state[0] + move[0], state[1] + move[1])
 
@@ -169,6 +184,39 @@ class Environment:
                 if self.map[i, col] == MAP_GOAL:
                     self.map[i, col] = " "
                     self.goal.remove((i, col))
+                    destroyed = True
+                    break
+
+        #je gère pour les angles diagonaux
+        elif self.angle % 360 == 45:  # Haut Droite
+            for i in range(1, min(self.width - col, row)):
+                if self.map[row - i, col + i] == MAP_GOAL:
+                    self.map[row - i, col + i] = " "
+                    self.goal.remove((row - i, col + i))
+                    destroyed = True
+                    break
+
+        elif self.angle % 360 == 135:  # Haut Gauche
+            for i in range(1, min(col + 1, row)):
+                if self.map[row - i, col - i] == MAP_GOAL:
+                    self.map[row - i, col - i] = " "
+                    self.goal.remove((row - i, col - i))
+                    destroyed = True
+                    break
+
+        elif self.angle % 360 == 225:  # Bas Gauche
+            for i in range(1, min(col + 1, self.height - row)):
+                if self.map[row + i, col - i] == MAP_GOAL:
+                    self.map[row + i, col - i] = " "
+                    self.goal.remove((row + i, col - i))
+                    destroyed = True
+                    break
+
+        elif self.angle % 360 == 315:  # Bas Droite
+            for i in range(1, min(self.width - col, self.height - row)):
+                if self.map[row + i, col + i] == MAP_GOAL:
+                    self.map[row + i, col + i] = " "
+                    self.goal.remove((row + i, col + i))
                     destroyed = True
                     break
 
@@ -312,11 +360,8 @@ class MazeWindow(arcade.Window):
         bullet_sprite.angle = self.env.angle
 
         bullet_speed = 13
-        bullet_sprite.change_y = \
-                math.cos(math.radians(self.env.angle)) * bullet_speed
-        bullet_sprite.change_x = \
-                -math.sin(math.radians(self.env.angle)) \
-                * bullet_speed
+        bullet_sprite.change_y = math.cos(math.radians(self.env.angle)) * bullet_speed
+        bullet_sprite.change_x = -math.sin(math.radians(self.env.angle)) * bullet_speed
         bullet_sprite.update()
         self.bullet_list.append(bullet_sprite)
 
