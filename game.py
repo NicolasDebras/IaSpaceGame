@@ -9,11 +9,11 @@ from os.path import exists
 # Direction de la sortie : 0...7
 # Murs en connexitÃ© 4 (H, B, G, D) : Rien, mur ou goal
 
-
-REWARD_WALL = -128
-REWARD_DEFAULT = -1
-REWARD_BAD_SHOOT = -0.8
-REWARD_GOAL = 64
+# J'ai modifié les valeurs pour essayer d'améliorer
+REWARD_WALL = -5  # Moins sévère pour encourager l'exploration
+REWARD_DEFAULT = -1  # Légère pénalité pour chaque pas, encourage la recherche de chemin optimal
+REWARD_BAD_SHOOT = -2  # Pénalité pour un tir inutile
+REWARD_GOAL = 100  # Récompense significative pour atteindre l'objectif
 
 MAP_START = '.'
 MAP_GOAL = '*'
@@ -251,7 +251,7 @@ class Agent:
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.history = []
-        self.noise = 0
+        self.noise = 1
 
     def reset(self):
         self.position = env.start
@@ -377,7 +377,7 @@ class MazeWindow(arcade.Window):
             self.agent.reset()
         self.update_player()
 
-    def update_player(self):
+    def update_player(self): 
         self.player.center_x, self.player.center_y = self.state_to_xy(self.agent.position)
         self.player.angle = self.env.angle
 
