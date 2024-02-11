@@ -56,6 +56,7 @@ class Environment:
         self.map.clear()
         self.goal = []
         row, col = 0, 0
+        initial_positions = []
         for col in range(0, 28):
             for row in range(0, 15):
                 chance = random()
@@ -151,77 +152,39 @@ class Environment:
 
         return self.get_radar(state), state, reward
 
-    def is_destroyed(self, move):
-        row, col = move
+    def is_destroyed(self, position):
+        row, col = position
         destroyed = False
 
-        if self.angle % 360 == 90:  # Droite
-            for i in range(col + 1, self.width):
-                if self.map[row, i] == MAP_GOAL:
-                    self.map[row, i] = " "
-                    self.goal.remove((row, i))
-                    destroyed = True
-                    break
+        #liste des directions de vérification basée sur l'angle
+        directions = {
+            0: (-1, 0),  # Haut
+            90: (0, 1),  # Droite
+            180: (1, 0),  # Bas
+            270: (0, -1),  # Gauche
+            45: (-1, 1),  # Haut Droite
+            135: (1, 1),  # Bas Droite
+            225: (1, -1),  # Bas Gauche
+            315: (-1, -1),  # Haut Gauche
+        }
 
-        elif self.angle % 360 == 270:  # Gauche
-            for i in range(col - 1, -1, -1):
-                if self.map[row, i] == MAP_GOAL:
-                    self.map[row, i] = " "
-                    self.goal.remove((row, i))
-                    destroyed = True
-                    break
+        #la on obtient la direction de vérification basé sur l'angle actuel
+        dir_row, dir_col = directions[self.angle % 360]
 
-        elif self.angle % 360 == 0:  # Haut
-            for i in range(row - 1, -1, -1):
-                if self.map[i, col] == MAP_GOAL:
-                    self.map[i, col] = " "
-                    self.goal.remove((i, col))
-                    destroyed = True
-                    break
-
-        elif self.angle % 360 == 180:  # Bas
-            for i in range(row + 1, self.height):
-                if self.map[i, col] == MAP_GOAL:
-                    self.map[i, col] = " "
-                    self.goal.remove((i, col))
-                    destroyed = True
-                    break
-
-        #je gère pour les angles diagonaux
-        elif self.angle % 360 == 45:  # Haut Droite
-            for i in range(1, min(self.width - col, row)):
-                if self.map[row - i, col + i] == MAP_GOAL:
-                    self.map[row - i, col + i] = " "
-                    self.goal.remove((row - i, col + i))
-                    destroyed = True
-                    break
-
-        elif self.angle % 360 == 135:  # Haut Gauche
-            for i in range(1, min(col + 1, row)):
-                if self.map[row - i, col - i] == MAP_GOAL:
-                    self.map[row - i, col - i] = " "
-                    self.goal.remove((row - i, col - i))
-                    destroyed = True
-                    break
-
-        elif self.angle % 360 == 225:  # Bas Gauche
-            for i in range(1, min(col + 1, self.height - row)):
-                if self.map[row + i, col - i] == MAP_GOAL:
-                    self.map[row + i, col - i] = " "
-                    self.goal.remove((row + i, col - i))
-                    destroyed = True
-                    break
-
-        elif self.angle % 360 == 315:  # Bas Droite
-            for i in range(1, min(self.width - col, self.height - row)):
-                if self.map[row + i, col + i] == MAP_GOAL:
-                    self.map[row + i, col + i] = " "
-                    self.goal.remove((row + i, col + i))
-                    destroyed = True
-                    break
+        #je vérifie de la destruction dans la direction jusqu'à la première occurrence d'un astéroïde
+        check_row, check_col = row + dir_row, col + dir_col
+        while 0 <= check_row < self.height and 0 <= check_col < self.width:
+            if self.map.get((check_row, check_col)) == MAP_GOAL:
+                #on dit que l'astéroide est détruit 
+                self.map[check_row, check_col] = " "
+                self.goal.remove((check_row, check_col))
+                destroyed = True
+                break
+            check_row += dir_row
+            check_col += dir_col
 
         if destroyed:
-            print("Shoot, nombre restant :" + str(self.count_asteroids()))
+            print("Astéroïde détruit. Nombre restant :", self.count_asteroids())
 
         return destroyed
 
@@ -311,6 +274,7 @@ class MazeWindow(arcade.Window):
                          SPRITE_SIZE * env.height, "ESGI Maze")
         self.env = agent.env
         self.agent = agent
+        
 
     def state_to_xy(self, state):
         return (state[1] + 0.5) * SPRITE_SIZE, \
