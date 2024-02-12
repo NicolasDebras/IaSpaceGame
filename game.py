@@ -14,6 +14,7 @@ REWARD_WALL = -5  # Moins sévère pour encourager l'exploration
 REWARD_DEFAULT = -1  # Légère pénalité pour chaque pas, encourage la recherche de chemin optimal
 REWARD_BAD_SHOOT = -2  # Pénalité pour un tir inutile
 REWARD_GOAL = 100  # Récompense significative pour atteindre l'objectif
+ALL_DESTROY = 1000
 
 MAP_START = '.'
 MAP_GOAL = '*'
