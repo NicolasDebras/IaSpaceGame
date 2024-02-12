@@ -67,24 +67,36 @@ class Environment:
         print(self.count_asteroids())
 
     def get_radar(self, state):
-        row, col = state[0], state[1]
-        neighbors = [(row-1, col), (row+1, col), (row, col-1), (row, col+1),
-                     (row-2, col), (row+2, col), (row, col-2), (row, col+2)]
-        radar = []
-        for n in neighbors:
-            if n in self.map:
-                radar.append(self.map[n])
-            else:
-                radar.append(MAP_WALL)
+        row, col = state
         next_target = self.find_closet_tuple(state)
-        radar_goal = [0] * 9
-        if (next_target != None):
-            delta_row = sign(next_target[0] - row) + 1
-            delta_col = sign(next_target[1] - col) + 1
-            position = delta_row * 3 + delta_col
-            radar_goal[position] = 1
+        radar_direction = [0] * 8  # Représentation de 8 directions possibles (N, NE, E, SE, S, SW, W, NW)
         
-        return tuple(radar + radar_goal)
+        if next_target is not None:
+            delta_row = next_target[0] - row
+            delta_col = next_target[1] - col
+            direction = math.atan2(delta_row, delta_col)  
+            direction_degrees = math.degrees(direction) % 360  # Convertir en degrés 
+
+            # Déterminer la direction basée sur l'angle
+            if direction_degrees <= 22.5 or direction_degrees > 337.5:
+                radar_direction[0] = 1  # N
+            elif 22.5 < direction_degrees <= 67.5:
+                radar_direction[1] = 1  # NE
+            elif 67.5 < direction_degrees <= 112.5:
+                radar_direction[2] = 1  # E
+            elif 112.5 < direction_degrees <= 157.5:
+                radar_direction[3] = 1  # SE
+            elif 157.5 < direction_degrees <= 202.5:
+                radar_direction[4] = 1  # S
+            elif 202.5 < direction_degrees <= 247.5:
+                radar_direction[5] = 1  # SW
+            elif 247.5 < direction_degrees <= 292.5:
+                radar_direction[6] = 1  # W
+            elif 292.5 < direction_degrees <= 337.5:
+                radar_direction[7] = 1  # NW
+        
+        return tuple(radar_direction)
+
 
     def count_asteroids(self): 
         return sum(1 for cle, valeur in self.map.items() if valeur == "*")
@@ -147,6 +159,7 @@ class Environment:
                 #else:
                 reward = REWARD_DEFAULT
 
+        print(self.get_radar(state))
         return self.get_radar(state), state, reward
 
     def is_destroyed(self, position):
@@ -188,7 +201,7 @@ class Environment:
 
     def is_allowed(self, state):
         return state not in self.map \
-            or self.map[state] in [MAP_START, MAP_WALL]
+            or self.map[state] in [MAP_START, MAP_WALL] or state in self.goal
 
 
 def arg_max(table):
