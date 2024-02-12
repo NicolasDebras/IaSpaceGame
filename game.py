@@ -309,6 +309,8 @@ class MazeWindow(arcade.Window):
         else:
             for g in self.goal:
                 self.goal.remove(g)
+            for b in self.bullet_list:
+                self.bullet_list.remove(b)
             self.agent.reset()
             self.display_meteor()
             self.goal.draw()
