@@ -22,7 +22,7 @@ MAP_START = '.'
 MAP_GOAL = '*'
 MAP_WALL = '#'
 
-NB_SHOOT = 100
+NB_SHOOT = 50000
 
 ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT = 'U', 'D', 'L', 'R'
 ACTION_SHOOT = 'S'
@@ -75,32 +75,35 @@ class Environment:
     def get_radar(self, state):
         row, col = state
         next_target = self.find_closet_tuple(state)
-        radar_direction = [0] * 8  # Représentation de 8 directions possibles (N, NE, E, SE, S, SW, W, NW)
+        radar_direction = [0] * 8  # Initialise toutes les directions à 0
         
         if next_target is not None:
+            # Calculez la direction vers la cible la plus proche
             delta_row = next_target[0] - row
             delta_col = next_target[1] - col
-            direction = math.atan2(delta_row, delta_col)  
-            direction_degrees = math.degrees(direction) % 360  # Convertir en degrés 
+            direction = math.atan2(delta_row, delta_col)
+            direction_degrees = math.degrees(direction) % 360
 
-            # Déterminer la direction basée sur l'angle
-            if direction_degrees <= 22.5 or direction_degrees > 337.5:
-                radar_direction[0] = 1  # N
-            elif 22.5 < direction_degrees <= 67.5:
-                radar_direction[1] = 1  # NE
-            elif 67.5 < direction_degrees <= 112.5:
-                radar_direction[2] = 1  # E
-            elif 112.5 < direction_degrees <= 157.5:
-                radar_direction[3] = 1  # SE
-            elif 157.5 < direction_degrees <= 202.5:
-                radar_direction[4] = 1  # S
-            elif 202.5 < direction_degrees <= 247.5:
-                radar_direction[5] = 1  # SW
-            elif 247.5 < direction_degrees <= 292.5:
-                radar_direction[6] = 1  # W
-            elif 292.5 < direction_degrees <= 337.5:
-                radar_direction[7] = 1  # NW
-        
+            # Ajustez la direction en fonction de l'angle du vaisseau
+            adjusted_direction_degrees = (direction_degrees - self.angle) % 360
+
+            # Utilisez l'angle ajusté pour déterminer la direction du radar
+            if 337.5 < adjusted_direction_degrees or adjusted_direction_degrees <= 22.5:
+                radar_direction[1] = 1  # N
+            elif 22.5 < adjusted_direction_degrees <= 67.5:
+                radar_direction[0] = 1  # NE
+            elif 67.5 < adjusted_direction_degrees <= 112.5:
+                radar_direction[3] = 1  # E
+            elif 112.5 < adjusted_direction_degrees <= 157.5:
+                radar_direction[5] = 1  # SE
+            elif 157.5 < adjusted_direction_degrees <= 202.5:
+                radar_direction[6] = 1  # S
+            elif 202.5 < adjusted_direction_degrees <= 247.5:
+                radar_direction[7] = 1  # SO
+            elif 247.5 < adjusted_direction_degrees <= 292.5:
+                radar_direction[4] = 1  # O
+            elif 292.5 < adjusted_direction_degrees <= 337.5:
+                radar_direction[2] = 1  # NO
         return tuple(radar_direction)
 
 
@@ -166,7 +169,7 @@ class Environment:
                 state = new_state
                 reward = REWARD_DEFAULT
 
-        print(self.get_radar(state))
+       
         #print(self.nb_shoot)
         return self.get_radar(state), state, reward
 
@@ -203,6 +206,7 @@ class Environment:
 
         if destroyed:
             print("Astéroïde détruit. Nombre restant :", self.count_asteroids())
+            print(self.goal)
 
         return destroyed
 
@@ -290,9 +294,11 @@ class MazeWindow(arcade.Window):
     def __init__(self, agent):
         super().__init__(SPRITE_SIZE * env.width,
                          SPRITE_SIZE * env.height, "ESGI Maze")
+        self.rate = 0.6
         self.env = agent.env
         self.agent = agent
         self.background = arcade.load_texture("univers.jpg")
+        self.set_update_rate(0.01)
         
 
     def state_to_xy(self, state):
@@ -301,6 +307,7 @@ class MazeWindow(arcade.Window):
 
     def setup(self):
         self.goal = arcade.SpriteList()
+        self.radar = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
         self.display_meteor()
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_green.png", SPRITE_SCALE)
@@ -329,39 +336,34 @@ class MazeWindow(arcade.Window):
         arcade.draw_text(f'{self.agent.iteration} Score: {self.agent.score} Noise: {self.agent.noise}',
                          10, 10, arcade.color.RED, 24, bold=True)
         
-        #pour dessiner le radar autour du vaisseau
-        radar_positions = self.get_radar_visualization()
+        self.draw_radar()
+        
 
-        for item in radar_positions:
-            pos = item['pos']  # Accès à la position
-            color = item['color']  # Accès à la couleur
-            arcade.draw_circle_filled(pos[0], pos[1], 5, color)
-
-
-    def get_radar_visualization(self):
-        radar = self.env.get_radar(self.agent.position)
-        radar_visualization_positions = []
-        directions = [(-1, 0), (-1, 1), (0, 1), (1, 1),
-                    (1, 0), (1, -1), (0, -1), (-1, -1)]
-
-        for index, val in enumerate(radar):
-            if val == 1:
-                row, col = self.agent.position
-                dir_row, dir_col = directions[index]
-                target_row, target_col = row + dir_row, col + dir_col
-                abs_x, abs_y = self.state_to_xy((target_row, target_col))
+    def draw_radar(self):
+        radar_positions = self.env.get_radar(self.agent.position)
+        directions = [(-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0)]  # NE, N, NO, E, SE, S, SO, O
+        
+        for i, radar_state in enumerate(radar_positions):
+            sprite_path = ":resources:images/items/gemRed.png" if radar_state == 1 else ":resources:images/items/gemYellow.png"
+            sprite = arcade.Sprite(sprite_path, SPRITE_SCALE)
             
-                radar_visualization_positions.append({'pos': (abs_x, abs_y), 'color': arcade.color.RED})
-            else:
-                pass
+            # Calcule la position du sprite basée sur la direction du radar et la position du vaisseau
+            dir_x, dir_y = directions[i]
+            ship_x, ship_y = self.state_to_xy(self.agent.position)
+            sprite.center_x = ship_x + dir_x * SPRITE_SIZE
+            sprite.center_y = ship_y + dir_y * SPRITE_SIZE
+            print(radar_state)
+            print(dir_x, dir_y)
+              
+            sprite.draw()
+        print(radar_positions)
+        time.sleep(600)
 
-        return radar_visualization_positions
+            
 
 
     def on_update(self, delta_time):
-        if self.env.nb_shoot <= 0:
-            for g in self.goal:
-                self.goal.remove(g)
+        if self.env.nb_shoot <= 0 or self.agent.position in self.env.goal:
             self.bullet_list = arcade.SpriteList()
             self.agent.reset()
             self.display_meteor()
@@ -398,8 +400,7 @@ class MazeWindow(arcade.Window):
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.R:
-            for g in self.goal:
-                self.goal.remove(g)
+            self.bullet_list = arcade.SpriteList()
             self.agent.reset()
             self.display_meteor()
             self.goal.draw()
@@ -407,7 +408,11 @@ class MazeWindow(arcade.Window):
             self.agent.noise = 1
             self.agent.reset()
         elif key == arcade.key.P:
-            time.sleep(600)
+            time.sleep(60)
+        elif key == arcade.key.U:
+            self.set_update_rate(0.1)
+        elif key == arcade.key.I:
+            self.set_update_rate(0.01)
         self.update_player()
 
     def update_player(self): 
