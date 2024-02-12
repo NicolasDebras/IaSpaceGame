@@ -20,7 +20,7 @@ MAP_START = '.'
 MAP_GOAL = '*'
 MAP_WALL = '#'
 
-ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_UP_RIGHT, ACTION_UP_LEFT, ACTION_DOWN_RIGHT, ACTION_DOWN_LEFT = 'U', 'D', 'L', 'R', 'UR', 'UL', 'DR', 'DL'
+ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT = 'U', 'D', 'L', 'R'
 ACTION_SHOOT = 'S'
 ACTIONS = [ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_SHOOT]
 
@@ -28,10 +28,7 @@ MOVES = {ACTION_UP: (-1, 0),
          ACTION_DOWN: (1, 0),
          ACTION_LEFT: (0, -1),
          ACTION_RIGHT: (0, 1),
-         ACTION_UP_RIGHT: (-1, 1),
-         ACTION_UP_LEFT: (-1, -1),
-         ACTION_DOWN_RIGHT: (1, 1),
-         ACTION_DOWN_LEFT: (1, -1),}
+        }
 
 SPRITE_SCALE = 0.4
 SPRITE_SIZE = int(SPRITE_SCALE * 128)
@@ -58,7 +55,6 @@ class Environment:
         self.map.clear()
         self.goal = []
         row, col = 0, 0
-        initial_positions = []
         for col in range(0, 28):
             for row in range(0, 15):
                 chance = random()
@@ -107,28 +103,26 @@ class Environment:
 
     #a changer 
     def do(self, state, action):
+        directions = {
+            0: (-1, 0),  # Haut
+            90: (0, 1),  # Droite
+            180: (1, 0),  # Bas
+            270: (0, -1),  # Gauche
+            45: (-1, 1),  # Haut Droite
+            135: (1, 1),  # Bas Droite
+            225: (1, -1),  # Bas Gauche
+            315: (-1, -1),  # Haut Gauche
+        }
+
+
         shoot = False
         if (action == 'S'):
             #print("shoot")
             shoot = True
             move = state
         elif action == ACTION_UP or action == ACTION_DOWN:
-            if self.angle%360 == 90:
-                action = ACTION_RIGHT
-            if self.angle%360 == 270:
-                action = ACTION_LEFT
-            move = MOVES[action]
-        elif action in [ACTION_UP_RIGHT, ACTION_UP_LEFT, ACTION_DOWN_RIGHT, ACTION_DOWN_LEFT]:
-            move = MOVES[action]
-            #ajustement de l'angle pour les déplacements diagonaux
-            if action == ACTION_UP_RIGHT:
-                self.angle = 45
-            elif action == ACTION_UP_LEFT:
-                self.angle = 315
-            elif action == ACTION_DOWN_RIGHT:
-                self.angle = 135
-            elif action == ACTION_DOWN_LEFT:
-                self.angle = 225
+            test = directions[self.angle % 360]
+            move = test
         else:
             if action == ACTION_RIGHT:
                 self.angle = (self.angle + 45) % 360
