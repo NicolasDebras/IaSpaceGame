@@ -53,6 +53,7 @@ class Environment:
         self.width = 28
 
     def init_map(self):
+        self.nb_shoot = 100
         nbAsteriod = 0
         self.map.clear()
         self.goal = []
@@ -117,6 +118,8 @@ class Environment:
 
     #a changer 
     def do(self, state, action):
+        reward = 0
+
         directions = {
             0: (-1, 0),  # Haut
             90: (0, 1),  # Droite
@@ -143,14 +146,14 @@ class Environment:
             move = state
         new_state = (state[0] + move[0], state[1] + move[1])
 
-        if shoot:     
+        if shoot: 
+            self.nb_shoot = self.nb_shoot - 1    
             if self.is_destroyed(move):
                 if self.count_asteroids() != 0:
                     reward = REWARD_GOAL
                 else:
                     reward = ALL_DESTROY
             else :
-                self.nb_shoot = self.nb_shoot - 1
                 if self.nb_shoot <= 0:
                     reward = REWARD_ALL_SHOOT
         else :
@@ -160,7 +163,8 @@ class Environment:
                 state = new_state
                 reward = REWARD_DEFAULT
 
-        print(self.get_radar(state))
+        #print(self.get_radar(state))
+        #print(self.nb_shoot)
         return self.get_radar(state), state, reward
 
     def is_destroyed(self, position):
@@ -321,23 +325,42 @@ class MazeWindow(arcade.Window):
         #pour dessiner le radar autour du vaisseau
         radar_positions = self.get_radar_visualization()
 
-        for pos in radar_positions:
-            arcade.draw_circle_filled(pos[0], pos[1], 5, arcade.color.YELLOW)
+        for item in radar_positions:
+            pos = item['pos']  # Accès à la position
+            color = item['color']  # Accès à la couleur
+            arcade.draw_circle_filled(pos[0], pos[1], 5, color)
 
-    def get_radar_visualization(self, position):
-        row, col = position
+
+    def get_radar_visualization(self):
+        radar = self.env.get_radar(self.agent.position)
         radar_visualization_positions = []
-        relative_positions = [(-1, 0), (1, 0), (0, -1), (0, 1),
-                            (-2, 0), (2, 0), (0, -2), (0, 2)]
-        for rel_pos in relative_positions:
-            rel_row, rel_col = rel_pos
-            abs_x, abs_y = self.state_to_xy((row + rel_row, col + rel_col))
-            radar_visualization_positions.append((abs_x, abs_y))
-        
+        directions = [(-1, 0), (-1, 1), (0, 1), (1, 1),
+                    (1, 0), (1, -1), (0, -1), (-1, -1)]
+
+        for index, val in enumerate(radar):
+            if val == 1:
+                row, col = self.agent.position
+                dir_row, dir_col = directions[index]
+                target_row, target_col = row + dir_row, col + dir_col
+                abs_x, abs_y = self.state_to_xy((target_row, target_col))
+            
+                radar_visualization_positions.append({'pos': (abs_x, abs_y), 'color': arcade.color.RED})
+            else:
+                pass
+
         return radar_visualization_positions
 
+
     def on_update(self, delta_time):
-        if self.env.count_asteroids() != 0 or self.env.nb_shoot <= 0 :
+        if self.env.nb_shoot <= 0:
+            for g in self.goal:
+                self.goal.remove(g)
+            for b in self.bullet_list:
+                self.bullet_list.remove(b)
+            self.agent.reset()
+            self.display_meteor()
+            self.goal.draw()
+        elif self.env.count_asteroids() != 0:
             action, reward = self.agent.do()
             if action != "S":
                 self.update_player()
