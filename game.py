@@ -317,6 +317,24 @@ class MazeWindow(arcade.Window):
         self.player.angle = self.env.angle
         arcade.draw_text(f'{self.agent.iteration} Score: {self.agent.score} Noise: {self.agent.noise}',
                          10, 10, arcade.color.RED, 24, bold=True)
+        
+        #pour dessiner le radar autour du vaisseau
+        radar_positions = self.get_radar_visualization()
+
+        for pos in radar_positions:
+            arcade.draw_circle_filled(pos[0], pos[1], 5, arcade.color.YELLOW)
+
+    def get_radar_visualization(self, position):
+        row, col = position
+        radar_visualization_positions = []
+        relative_positions = [(-1, 0), (1, 0), (0, -1), (0, 1),
+                            (-2, 0), (2, 0), (0, -2), (0, 2)]
+        for rel_pos in relative_positions:
+            rel_row, rel_col = rel_pos
+            abs_x, abs_y = self.state_to_xy((row + rel_row, col + rel_col))
+            radar_visualization_positions.append((abs_x, abs_y))
+        
+        return radar_visualization_positions
 
     def on_update(self, delta_time):
         if self.env.count_asteroids() != 0 or self.env.nb_shoot <= 0 :
