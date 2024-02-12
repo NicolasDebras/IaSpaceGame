@@ -3,6 +3,7 @@ from random import *
 import matplotlib.pyplot as plt
 import pickle
 import math
+import time
 from os.path import exists
 
 # RADAR ?
@@ -165,7 +166,7 @@ class Environment:
                 state = new_state
                 reward = REWARD_DEFAULT
 
-        #print(self.get_radar(state))
+        print(self.get_radar(state))
         #print(self.nb_shoot)
         return self.get_radar(state), state, reward
 
@@ -405,6 +406,8 @@ class MazeWindow(arcade.Window):
         elif key == arcade.key.X:
             self.agent.noise = 1
             self.agent.reset()
+        elif key == arcade.key.P:
+            time.sleep(600)
         self.update_player()
 
     def update_player(self): 
