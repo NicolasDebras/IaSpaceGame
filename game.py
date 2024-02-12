@@ -317,6 +317,12 @@ class MazeWindow(arcade.Window):
                 for asteroid in asteroids:
                     asteroid.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
+        else:
+            for g in self.goal:
+                self.goal.remove(g)
+            self.agent.reset()
+            self.display_meteor()
+            self.goal.draw()
 
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
