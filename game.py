@@ -341,7 +341,7 @@ class MazeWindow(arcade.Window):
 
     def draw_radar(self):
         radar_positions = self.env.get_radar(self.agent.position)
-        directions = [(-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0)]  # NE, N, NO, E, SE, S, SO, O
+        directions = [(-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0)]  # HG, H, HO, E, BG, S, BO, O
         
         for i, radar_state in enumerate(radar_positions):
             sprite_path = ":resources:images/items/gemRed.png" if radar_state == 1 else ":resources:images/items/gemYellow.png"
@@ -353,7 +353,7 @@ class MazeWindow(arcade.Window):
             sprite.center_x = ship_x + dir_x * SPRITE_SIZE
             sprite.center_y = ship_y + dir_y * SPRITE_SIZE
             print(radar_state)
-            print(dir_x, dir_y)
+            print(dir_x, sprite.center_y)
               
             sprite.draw()
         print(radar_positions)
