@@ -205,7 +205,7 @@ class TurningSprite(arcade.Sprite):
 
 
 class Agent:
-    def __init__(self, env, learning_rate = 1, discount_factor = 0.9):
+    def __init__(self, env, learning_rate = 0.5, discount_factor = 0.9):
         self.env = env
         self.reset()
         self.qtable = {}
