@@ -306,11 +306,15 @@ class MazeWindow(arcade.Window):
         self.update_player()
 
     def display_meteor(self):
+        self.goal = arcade.SpriteList()
+        print(f"Nombre d'astéroïdes avant initialisation: {len(self.goal)}")
         for state in self.env.goal:
             i = randint(1, 4)
             exit = arcade.Sprite(":resources:images/space_shooter/meteorGrey_big"+str(i)+".png", SPRITE_SCALE)
             exit.center_x, exit.center_y = self.state_to_xy(state)
             self.goal.append(exit)
+        print(f"Nombre d'astéroïdes après initialisation: {len(self.goal)}")
+
 
     def on_draw(self):
         arcade.start_render()
@@ -357,8 +361,7 @@ class MazeWindow(arcade.Window):
         if self.env.nb_shoot <= 0:
             for g in self.goal:
                 self.goal.remove(g)
-            for b in self.bullet_list:
-                self.bullet_list.remove(b)
+            self.bullet_list = arcade.SpriteList()
             self.agent.reset()
             self.display_meteor()
             self.goal.draw()
@@ -376,10 +379,7 @@ class MazeWindow(arcade.Window):
                     asteroid.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
         else:
-            for g in self.goal:
-                self.goal.remove(g)
-            for b in self.bullet_list:
-                self.bullet_list.remove(b)
+            self.bullet_list = arcade.SpriteList()
             self.agent.reset()
             self.display_meteor()
             self.goal.draw()
