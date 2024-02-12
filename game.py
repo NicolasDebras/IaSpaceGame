@@ -21,6 +21,8 @@ MAP_START = '.'
 MAP_GOAL = '*'
 MAP_WALL = '#'
 
+NB_SHOOT = 100
+
 ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT = 'U', 'D', 'L', 'R'
 ACTION_SHOOT = 'S'
 ACTIONS = [ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_SHOOT]
@@ -44,7 +46,7 @@ def sign(x):
 class Environment:
     def __init__(self):     
         self.map = {}
-        self.nb_shoot = 100
+        self.nb_shoot = NB_SHOOT
         self.goal = []
         self.angle = 180.0
         self.init_map()
@@ -53,7 +55,7 @@ class Environment:
         self.width = 28
 
     def init_map(self):
-        self.nb_shoot = 100
+        self.nb_shoot = NB_SHOOT
         nbAsteriod = 0
         self.map.clear()
         self.goal = []
