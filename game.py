@@ -9,25 +9,28 @@ from os.path import exists
 # Direction de la sortie : 0...7
 # Murs en connexitÃ© 4 (H, B, G, D) : Rien, mur ou goal
 
-
-REWARD_WALL = -128
-REWARD_DEFAULT = -1
-REWARD_BAD_SHOOT = -0.8
-REWARD_GOAL = 64
-ALL_DESTROY = 128
+# J'ai modifié les valeurs pour essayer d'améliorer
+REWARD_WALL = -5  # Moins sévère pour encourager l'exploration
+REWARD_DEFAULT = -1  # Légère pénalité pour chaque pas, encourage la recherche de chemin optimal
+REWARD_BAD_SHOOT = -2  # Pénalité pour un tir inutile
+REWARD_GOAL = 100  # Récompense significative pour atteindre l'objectif
 
 MAP_START = '.'
 MAP_GOAL = '*'
 MAP_WALL = '#'
 
-ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT = 'U', 'D', 'L', 'R'
+ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_UP_RIGHT, ACTION_UP_LEFT, ACTION_DOWN_RIGHT, ACTION_DOWN_LEFT = 'U', 'D', 'L', 'R', 'UR', 'UL', 'DR', 'DL'
 ACTION_SHOOT = 'S'
 ACTIONS = [ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT, ACTION_SHOOT]
 
 MOVES = {ACTION_UP: (-1, 0),
          ACTION_DOWN: (1, 0),
          ACTION_LEFT: (0, -1),
-         ACTION_RIGHT: (0, 1)}
+         ACTION_RIGHT: (0, 1),
+         ACTION_UP_RIGHT: (-1, 1),
+         ACTION_UP_LEFT: (-1, -1),
+         ACTION_DOWN_RIGHT: (1, 1),
+         ACTION_DOWN_LEFT: (1, -1),}
 
 SPRITE_SCALE = 0.4
 SPRITE_SIZE = int(SPRITE_SCALE * 128)
@@ -53,6 +56,7 @@ class Environment:
         self.map.clear()
         self.goal = []
         row, col = 0, 0
+        initial_positions = []
         for col in range(0, 28):
             for row in range(0, 15):
                 chance = random()
@@ -111,11 +115,22 @@ class Environment:
             if self.angle%360 == 270:
                 action = ACTION_LEFT
             move = MOVES[action]
+        elif action in [ACTION_UP_RIGHT, ACTION_UP_LEFT, ACTION_DOWN_RIGHT, ACTION_DOWN_LEFT]:
+            move = MOVES[action]
+            #ajustement de l'angle pour les déplacements diagonaux
+            if action == ACTION_UP_RIGHT:
+                self.angle = 45
+            elif action == ACTION_UP_LEFT:
+                self.angle = 315
+            elif action == ACTION_DOWN_RIGHT:
+                self.angle = 135
+            elif action == ACTION_DOWN_LEFT:
+                self.angle = 225
         else:
             if action == ACTION_RIGHT:
-                self.angle = self.angle + 90
-            if action == ACTION_LEFT:
-                self.angle = self.angle - 90
+                self.angle = (self.angle + 45) % 360
+            elif action == ACTION_LEFT:
+                self.angle = (self.angle - 45) % 360
             move = state
         new_state = (state[0] + move[0], state[1] + move[1])
 
@@ -137,44 +152,39 @@ class Environment:
 
         return self.get_radar(state), state, reward
 
-    def is_destroyed(self, move):
-        row, col = move
+    def is_destroyed(self, position):
+        row, col = position
         destroyed = False
 
-        if self.angle % 360 == 90:  # Droite
-            for i in range(col + 1, self.width):
-                if self.map[row, i] == MAP_GOAL:
-                    self.map[row, i] = " "
-                    self.goal.remove((row, i))
-                    destroyed = True
-                    break
+        #liste des directions de vérification basée sur l'angle
+        directions = {
+            0: (-1, 0),  # Haut
+            90: (0, 1),  # Droite
+            180: (1, 0),  # Bas
+            270: (0, -1),  # Gauche
+            45: (-1, 1),  # Haut Droite
+            135: (1, 1),  # Bas Droite
+            225: (1, -1),  # Bas Gauche
+            315: (-1, -1),  # Haut Gauche
+        }
 
-        elif self.angle % 360 == 270:  # Gauche
-            for i in range(col - 1, -1, -1):
-                if self.map[row, i] == MAP_GOAL:
-                    self.map[row, i] = " "
-                    self.goal.remove((row, i))
-                    destroyed = True
-                    break
+        #la on obtient la direction de vérification basé sur l'angle actuel
+        dir_row, dir_col = directions[self.angle % 360]
 
-        elif self.angle % 360 == 0:  # Haut
-            for i in range(row - 1, -1, -1):
-                if self.map[i, col] == MAP_GOAL:
-                    self.map[i, col] = " "
-                    self.goal.remove((i, col))
-                    destroyed = True
-                    break
-
-        elif self.angle % 360 == 180:  # Bas
-            for i in range(row + 1, self.height):
-                if self.map[i, col] == MAP_GOAL:
-                    self.map[i, col] = " "
-                    self.goal.remove((i, col))
-                    destroyed = True
-                    break
+        #je vérifie de la destruction dans la direction jusqu'à la première occurrence d'un astéroïde
+        check_row, check_col = row + dir_row, col + dir_col
+        while 0 <= check_row < self.height and 0 <= check_col < self.width:
+            if self.map.get((check_row, check_col)) == MAP_GOAL:
+                #on dit que l'astéroide est détruit 
+                self.map[check_row, check_col] = " "
+                self.goal.remove((check_row, check_col))
+                destroyed = True
+                break
+            check_row += dir_row
+            check_col += dir_col
 
         if destroyed:
-            print("Shoot, nombre restant :" + str(self.count_asteroids()))
+            print("Astéroïde détruit. Nombre restant :", self.count_asteroids())
 
         return destroyed
 
@@ -195,7 +205,7 @@ class TurningSprite(arcade.Sprite):
 
 
 class Agent:
-    def __init__(self, env, learning_rate = 0.8, discount_factor = 0.9):
+    def __init__(self, env, learning_rate = 0.5, discount_factor = 0.9):
         self.env = env
         self.reset()
         self.qtable = {}
@@ -204,7 +214,7 @@ class Agent:
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.history = []
-        self.noise = 0
+        self.noise = 1
 
     def reset(self):
         self.position = env.start
@@ -264,6 +274,7 @@ class MazeWindow(arcade.Window):
                          SPRITE_SIZE * env.height, "ESGI Maze")
         self.env = agent.env
         self.agent = agent
+        
 
     def state_to_xy(self, state):
         return (state[1] + 0.5) * SPRITE_SIZE, \
@@ -309,12 +320,9 @@ class MazeWindow(arcade.Window):
         else:
             for g in self.goal:
                 self.goal.remove(g)
-            for b in self.bullet_list:
-                self.bullet_list.remove(b)
             self.agent.reset()
             self.display_meteor()
             self.goal.draw()
-
 
     def shoot(self):
         bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALE)
@@ -322,11 +330,8 @@ class MazeWindow(arcade.Window):
         bullet_sprite.angle = self.env.angle
 
         bullet_speed = 13
-        bullet_sprite.change_y = \
-                math.cos(math.radians(self.env.angle)) * bullet_speed
-        bullet_sprite.change_x = \
-                -math.sin(math.radians(self.env.angle)) \
-                * bullet_speed
+        bullet_sprite.change_y = math.cos(math.radians(self.env.angle)) * bullet_speed
+        bullet_sprite.change_x = -math.sin(math.radians(self.env.angle)) * bullet_speed
         bullet_sprite.update()
         self.bullet_list.append(bullet_sprite)
 
@@ -342,7 +347,7 @@ class MazeWindow(arcade.Window):
             self.agent.reset()
         self.update_player()
 
-    def update_player(self):
+    def update_player(self): 
         self.player.center_x, self.player.center_y = self.state_to_xy(self.agent.position)
         self.player.angle = self.env.angle
 
@@ -367,4 +372,3 @@ if __name__ == '__main__':
     #print(agent.history)
     plt.plot(agent.history)
     plt.show()
-
