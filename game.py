@@ -12,9 +12,10 @@ from os.path import exists
 # J'ai modifié les valeurs pour essayer d'améliorer
 REWARD_WALL = -5  # Moins sévère pour encourager l'exploration
 REWARD_DEFAULT = -1  # Légère pénalité pour chaque pas, encourage la recherche de chemin optimal
-REWARD_BAD_SHOOT = -2  # Pénalité pour un tir inutile
+#REWARD_BAD_SHOOT = -2  # Pénalité pour un tir inutile
 REWARD_GOAL = 100  # Récompense significative pour atteindre l'objectif
 ALL_DESTROY = 1000
+REWARD_ALL_SHOOT = 500
 
 MAP_START = '.'
 MAP_GOAL = '*'
@@ -43,6 +44,7 @@ def sign(x):
 class Environment:
     def __init__(self):     
         self.map = {}
+        self.nb_shoot = 100
         self.goal = []
         self.angle = 180.0
         self.init_map()
@@ -125,8 +127,6 @@ class Environment:
             225: (1, -1),  # Bas Gauche
             315: (-1, -1),  # Haut Gauche
         }
-
-
         shoot = False
         if (action == 'S'):
             #print("shoot")
@@ -143,20 +143,21 @@ class Environment:
             move = state
         new_state = (state[0] + move[0], state[1] + move[1])
 
-        if shoot == True:
-            #print(move)       
+        if shoot:     
             if self.is_destroyed(move):
-                reward = REWARD_GOAL
+                if self.count_asteroids() != 0:
+                    reward = REWARD_GOAL
+                else:
+                    reward = ALL_DESTROY
             else :
-                reward = REWARD_DEFAULT
+                self.nb_shoot = self.nb_shoot - 1
+                if self.nb_shoot <= 0:
+                    reward = REWARD_ALL_SHOOT
         else :
             if self.is_allowed(new_state):
                 reward = REWARD_WALL
             else:
                 state = new_state
-                #if new_state == self.goal:
-                #    reward = REWARD_GOAL
-                #else:
                 reward = REWARD_DEFAULT
 
         print(self.get_radar(state))
@@ -224,7 +225,7 @@ class Agent:
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.history = []
-        self.noise = 1
+        self.noise = 0
 
     def reset(self):
         self.position = env.start
@@ -318,7 +319,7 @@ class MazeWindow(arcade.Window):
                          10, 10, arcade.color.RED, 24, bold=True)
 
     def on_update(self, delta_time):
-        if self.env.count_asteroids() != 0:
+        if self.env.count_asteroids() != 0 or self.env.nb_shoot <= 0 :
             action, reward = self.agent.do()
             if action != "S":
                 self.update_player()
