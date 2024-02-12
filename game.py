@@ -277,6 +277,7 @@ class MazeWindow(arcade.Window):
                          SPRITE_SIZE * env.height, "ESGI Maze")
         self.env = agent.env
         self.agent = agent
+        self.background = arcade.load_texture("univers.jpg")
         
 
     def state_to_xy(self, state):
@@ -299,6 +300,9 @@ class MazeWindow(arcade.Window):
 
     def on_draw(self):
         arcade.start_render()
+        arcade.draw_texture_rectangle(self.width // 2, self.height // 2,
+                                      self.width, self.height,
+                                      self.background)
         self.goal.draw()
         self.player.draw()
         self.bullet_list.draw()
