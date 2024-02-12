@@ -53,6 +53,7 @@ class Environment:
         self.width = 28
 
     def init_map(self):
+        nbAsteriod = 0
         self.map.clear()
         self.goal = []
         row, col = 0, 0
@@ -60,9 +61,10 @@ class Environment:
         for col in range(0, 28):
             for row in range(0, 15):
                 chance = random()
-                if chance < 0.05 and col != 0 and row != 0:
+                if chance < 0.05 and col != 0 and row != 0 and nbAsteriod < 15:
                     self.map[row, col] = MAP_GOAL
                     self.goal.append((row, col))
+                    nbAsteriod = nbAsteriod + 1
                 else:
                     self.map[row, col] = " "
         print(self.count_asteroids())
