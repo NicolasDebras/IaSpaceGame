@@ -75,36 +75,30 @@ class Environment:
     def get_radar(self, state):
         row, col = state
         next_target = self.find_closet_tuple(state)
-        radar_direction = [0] * 8  # Initialise toutes les directions à 0
+        radar_direction = [0] * 8  
         
         if next_target is not None:
-            # Calculez la direction vers la cible la plus proche
+            #on calcule la direction vers la cible la plus proche
             delta_row = next_target[0] - row
             delta_col = next_target[1] - col
             direction = math.atan2(delta_row, delta_col)
             direction_degrees = math.degrees(direction) % 360
 
-            # Ajustez la direction en fonction de l'angle du vaisseau
+            #j'ajuste la direction en fonction de l'angle du vaisseau
             adjusted_direction_degrees = (direction_degrees - self.angle) % 360
 
-            # Utilisez l'angle ajusté pour déterminer la direction du radar
-            if 337.5 < adjusted_direction_degrees or adjusted_direction_degrees <= 22.5:
-                radar_direction[1] = 1  # N
-            elif 22.5 < adjusted_direction_degrees <= 67.5:
-                radar_direction[0] = 1  # NE
-            elif 67.5 < adjusted_direction_degrees <= 112.5:
-                radar_direction[3] = 1  # E
-            elif 112.5 < adjusted_direction_degrees <= 157.5:
-                radar_direction[5] = 1  # SE
-            elif 157.5 < adjusted_direction_degrees <= 202.5:
-                radar_direction[6] = 1  # S
-            elif 202.5 < adjusted_direction_degrees <= 247.5:
-                radar_direction[7] = 1  # SO
-            elif 247.5 < adjusted_direction_degrees <= 292.5:
-                radar_direction[4] = 1  # O
-            elif 292.5 < adjusted_direction_degrees <= 337.5:
-                radar_direction[2] = 1  # NO
+            # on détermine la directoon du radar
+            direction_indices = [(337.5, 22.5, 1), (22.5, 67.5, 0), (67.5, 112.5, 3), 
+                                (112.5, 157.5, 5), (157.5, 202.5, 6), (202.5, 247.5, 7), 
+                                (247.5, 292.5, 4), (292.5, 337.5, 2)]
+
+            for lower, upper, index in direction_indices:
+                if lower < adjusted_direction_degrees or adjusted_direction_degrees <= upper:
+                    radar_direction[index] = 1
+                    break
+
         return tuple(radar_direction)
+
 
 
     def count_asteroids(self): 
@@ -236,7 +230,7 @@ class Agent:
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.history = []
-        self.noise = 0
+        self.noise = 1
 
     def reset(self):
         self.position = env.start
@@ -357,7 +351,7 @@ class MazeWindow(arcade.Window):
               
             sprite.draw()
         print(radar_positions)
-        time.sleep(600)
+        #time.sleep(600)
 
             
 
