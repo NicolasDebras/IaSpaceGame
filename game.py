@@ -16,7 +16,7 @@ REWARD_DEFAULT = -1  # Légère pénalité pour chaque pas, encourage la recherc
 #REWARD_BAD_SHOOT = -2  # Pénalité pour un tir inutile
 REWARD_GOAL = 100  # Récompense significative pour atteindre l'objectif
 ALL_DESTROY = 1000
-REWARD_ALL_SHOOT = 500
+REWARD_ALL_SHOOT = -500
 
 MAP_START = '.'
 MAP_GOAL = '*'
