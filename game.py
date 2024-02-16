@@ -14,15 +14,15 @@ from os.path import exists
 REWARD_WALL = -5  # Moins sévère pour encourager l'exploration
 REWARD_DEFAULT = -1  # Légère pénalité pour chaque pas, encourage la recherche de chemin optimal
 #REWARD_BAD_SHOOT = -2  # Pénalité pour un tir inutile
-REWARD_GOAL = 100  # Récompense significative pour atteindre l'objectif
-ALL_DESTROY = 1000
-REWARD_ALL_SHOOT = -500
+REWARD_GOAL = 5  # Récompense significative pour atteindre l'objectif
+ALL_DESTROY = 100000
+REWARD_ALL_SHOOT = -5000
 
 MAP_START = '.'
 MAP_GOAL = '*'
 MAP_WALL = '#'
 
-NB_SHOOT = 50000
+NB_SHOOT = 500
 
 ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT = 'U', 'D', 'L', 'R'
 ACTION_SHOOT = 'S'
@@ -161,6 +161,7 @@ class Environment:
                     reward = ALL_DESTROY
             else :
                 if self.nb_shoot <= 0:
+                    print("detuit")
                     reward = REWARD_ALL_SHOOT
         else :
             if self.is_allowed(new_state):
@@ -236,7 +237,7 @@ class Agent:
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.history = []
-        self.noise = 1
+        self.noise = 0
 
     def reset(self):
         self.position = env.start
@@ -298,7 +299,7 @@ class MazeWindow(arcade.Window):
         self.env = agent.env
         self.agent = agent
         self.background = arcade.load_texture("univers.jpg")
-        self.set_update_rate(0.01)
+        self.set_update_rate(0.00001)
         
 
     def state_to_xy(self, state):
@@ -352,11 +353,11 @@ class MazeWindow(arcade.Window):
             ship_x, ship_y = self.state_to_xy(self.agent.position)
             sprite.center_x = ship_x + dir_x * SPRITE_SIZE
             sprite.center_y = ship_y + dir_y * SPRITE_SIZE
-            print(radar_state)
-            print(dir_x, sprite.center_y)
+            ##print(radar_state)
+            ##print(dir_x, sprite.center_y)
               
             sprite.draw()
-        print(radar_positions)
+        ##print(radar_positions)
         #time.sleep(600)
 
             
